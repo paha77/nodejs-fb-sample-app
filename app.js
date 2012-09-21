@@ -84,7 +84,9 @@ app.all('*', function(req, res, next) {
   if (!FBAPP.id || !FBAPP.secret || !FBAPP.ns) {
     return res.send(
       500,
-      'Facebook application has not been configured. Follow the readme.'
+      '<a href="https://github.com/daaku/nodejs-fb-sample-app">' +
+        'Facebook application has not been configured. Follow the readme.' +
+      '</a>'
     )
   }
   next()
