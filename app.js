@@ -3,6 +3,7 @@
 // (including Mobile). Please look at the associated readme for more
 // information.
 // https://github.com/daaku/nodejs-fb-sample-app
+var fs = require('fs')
 var url = require('url')
 var querystring = require('querystring')
 var signedRequest = require('signed-request')
@@ -24,14 +25,6 @@ var canvasURL = url.format({
   pathname: FBAPP.ns + '/'
 })
 
-// This JS string will reload the page on the client side.
-var reloadFN = (
-  'function() {' +
-    'if (window !== top) { top.location=' + JSON.stringify(canvasURL) + '}' +
-    'else { window.location.reload() }' +
-  '}'
-)
-
 // Makes a URL to the Facebook Login dialog.
 // https://developers.facebook.com/docs/authentication/canvas/
 function loginURL(redirectURI) {
@@ -48,38 +41,17 @@ function loginURL(redirectURI) {
   })
 }
 
-// JavaScript SDK initialization.
-// https://developers.facebook.com/docs/reference/javascript/
-function jssdk(opts) {
-  var sdkOpts = {
-    appId: String(FBAPP.id),
-    status: true,
-    cookie: true,
-    xfbml: true
-  }
-  var pre = ''
-  if (opts.reloadOnLogin)
-    pre += 'FB.Event.subscribe("auth.login",' + reloadFN + ');'
-  if (opts.reloadOnLogout)
-    pre += 'FB.Event.subscribe("auth.logout",' + reloadFN + ');'
-
-  // This is copy pasted from:
-  // https://developers.facebook.com/docs/reference/javascript/
+// Inline our JavaScript and boot() it.
+var externalJS = fs.readFileSync(__dirname + '/client.js', 'utf8')
+function js(conf) {
+  conf.canvasURL = canvasURL
+  conf.appId = FBAPP.id
   return (
     '<div id="fb-root"></div>' +
     '<script>' +
-      'window.fbAsyncInit = function() {' +
-        pre +
-        'FB.init(' + JSON.stringify(sdkOpts) + ');' +
-      '};' +
-      "(function(d){" +
-      "var js, id = 'facebook-jssdk', ref = d.getElementsByTagName('script')[0];" +
-      "if (d.getElementById(id)) {return;}" +
-      "js = d.createElement('script'); js.id = id; js.async = true;" +
-      "js.src = '//connect.facebook.net/en_US/all.js';" +
-      "ref.parentNode.insertBefore(js, ref);" +
-      "}(document));" +
-    "</script>"
+      externalJS +
+      'boot(' + JSON.stringify(conf) + ')' +
+    '</script>'
   )
 }
 
@@ -143,7 +115,7 @@ function sendLogin(req, res, next) {
     '<div class="fb-login-button" scope="' + FBAPP.scope + '">' +
       'JS SDK Dialog Login' +
     '</div>' +
-    jssdk({ reloadOnLogin: true })
+    js({ reloadOnLogin: true })
   )
 }
 
@@ -198,15 +170,9 @@ app.all('/', function(req, res, next) {
           200,
           '<!doctype html>' +
           'Welcome ' + me.name + ' with ID ' + me.id + '.<br>' +
-          '<button onclick="FB.logout()">Logout</button> ' +
-          '<button onclick=\'' +
-              'FB.api(' +
-                '{ method: "auth.revokeauthorization" },' +
-                reloadFN +
-              ')\'>' +
-            'Disconnect' +
-          '</button>' +
-          jssdk({ reloadOnLogout: true })
+          '<button id="sample-logout">Logout</button> ' +
+          '<button id="sample-disconnect">Disconnect</button>' +
+          js({ reloadOnLogout: true })
         )
       }
     )
