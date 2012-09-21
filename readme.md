@@ -23,3 +23,15 @@ Live Demo
 **Canvas**: https://apps.facebook.com/nodejssample/
 
 **Website**: https://nodejs-fb-sample-app.herokuapp.com/
+
+
+FAQ
+---
+
+### String contat for HTML?
+
+Please use this sample as a guide for a Facebook application. You
+should probably use one of the various template engines, and maybe
+something other than [express](http://expressjs.com/) and/or
+[request](https://github.com/mikeal/request) if that doesn't suit your
+needs.

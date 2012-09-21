@@ -4,8 +4,10 @@
 // information.
 // https://github.com/daaku/nodejs-fb-sample-app
 var url = require('url')
+var querystring = require('querystring')
 var signedRequest = require('signed-request')
 var express = require('express')
+var request = require('request')
 var signedRequestMaxAge = 86400
 var FBAPP = {
   id: process.env.FACEBOOK_APP_ID,
@@ -21,6 +23,14 @@ var canvasURL = url.format({
   host: 'apps.facebook.com',
   pathname: FBAPP.ns + '/'
 })
+
+// This JS string will reload the page on the client side.
+var reloadFN = (
+  'function() {' +
+    'if (window !== top) { top.location=' + JSON.stringify(canvasURL) + '}' +
+    'else { window.location.reload() }' +
+  '}'
+)
 
 // Makes a URL to the Facebook Login dialog.
 // https://developers.facebook.com/docs/authentication/canvas/
@@ -49,9 +59,12 @@ function jssdk(opts) {
   }
   var pre = ''
   if (opts.reloadOnLogin)
-    pre += 'FB.Event.subscribe("auth.login", function() { top.reload() });'
+    pre += 'FB.Event.subscribe("auth.login",' + reloadFN + ');'
   if (opts.reloadOnLogout)
-    pre += 'FB.Event.subscribe("auth.logout", function() { top.reload() });'
+    pre += 'FB.Event.subscribe("auth.logout",' + reloadFN + ');'
+
+  // This is copy pasted from:
+  // https://developers.facebook.com/docs/reference/javascript/
   return (
     '<div id="fb-root"></div>' +
     '<script>' +
@@ -59,9 +72,6 @@ function jssdk(opts) {
         pre +
         'FB.init(' + JSON.stringify(sdkOpts) + ');' +
       '};' +
-
-      // This is copy pasted from:
-      // https://developers.facebook.com/docs/reference/javascript/
       "(function(d){" +
       "var js, id = 'facebook-jssdk', ref = d.getElementsByTagName('script')[0];" +
       "if (d.getElementById(id)) {return;}" +
@@ -70,6 +80,70 @@ function jssdk(opts) {
       "ref.parentNode.insertBefore(js, ref);" +
       "}(document));" +
     "</script>"
+  )
+}
+
+// Get the access_token from the signed request.
+// https://developers.facebook.com/docs/authentication/server-side/
+function getAccessToken(sr, cb) {
+  if (!sr) return process.nextTick(cb.bind(null, new Error('no signed request')))
+  if (sr.oauth_token)
+    return process.nextTick(cb.bind(null, null, sr.oauth_token))
+  if (!sr.code)
+    return process.nextTick(cb.bind(null, new Error('no token or code')))
+  request.get(
+    {
+      url: 'https://graph.facebook.com/oauth/access_token',
+      qs: {
+        client_id: FBAPP.id,
+        client_secret: FBAPP.secret,
+        code: sr.code,
+        redirect_uri: '' // the cookie uses a empty redirect_uri
+      },
+      encoding: 'utf8'
+    },
+    function getAccessTokenCb(er, res, body) {
+      if (er) return cb(er)
+      var r = querystring.parse(body)
+      if (r && r.access_token) return cb(null, r.access_token)
+      cb(new Error('unexpected access_token exchange: ' + body))
+    }
+  )
+}
+
+// Get the /me response for the user.
+// https://developers.facebook.com/docs/reference/api/user/
+function graphMe(sr, cb) {
+  getAccessToken(sr, function graphMeAccessTokenCb(er, accessToken) {
+    if (er) return cb(er)
+    request.get(
+      {
+        url: 'https://graph.facebook.com/me',
+        qs: { access_token: accessToken },
+        json: true
+      },
+      function graphMeRequestCb(er, res, body) {
+        if (er) return cb(er)
+        console.log(body)
+        cb(null, body)
+      }
+    )
+  })
+}
+
+// Send the login page response.
+function sendLogin(req, res, next) {
+  res.send(
+    200,
+    '<!doctype html>' +
+    'Welcome unknown user. Click one of these to continue:<br><br>' +
+    '<a target="_top" href=' + JSON.stringify(loginURL(canvasURL)) + '>' +
+      'Full Page Canvas Login' +
+    '</a><br><br>' +
+    '<div class="fb-login-button" scope="' + FBAPP.scope + '">' +
+      'JS SDK Dialog Login' +
+    '</div>' +
+    jssdk({ reloadOnLogin: true })
   )
 }
 
@@ -111,28 +185,33 @@ app.all('*', function(req, res, next) {
 })
 
 // Sample home page.
-app.all('/', function(req, res) {
+app.all('/', function(req, res, next) {
   if (req.signedRequest && req.signedRequest.user_id) {
-    res.send(
-      200,
-      '<!doctype html>' +
-      'Got user ' + req.signedRequest.user_id + '<br>' +
-      '<button onclick="FB.logout()">Logout</button>' +
-      jssdk({ reloadOnLogout: true })
+    graphMe(
+      req.signedRequest,
+      function(er, me) {
+        if (er) {
+          console.error(er)
+          return sendLogin(req, res, next)
+        }
+        res.send(
+          200,
+          '<!doctype html>' +
+          'Welcome ' + me.name + ' with ID ' + me.id + '.<br>' +
+          '<button onclick="FB.logout()">Logout</button> ' +
+          '<button onclick=\'' +
+              'FB.api(' +
+                '{ method: "auth.revokeauthorization" },' +
+                reloadFN +
+              ')\'>' +
+            'Disconnect' +
+          '</button>' +
+          jssdk({ reloadOnLogout: true })
+        )
+      }
     )
   } else {
-    res.send(
-      200,
-      '<!doctype html>' +
-      'Welcome unknown user. Click one of these to continue:<br><br>' +
-      '<a target="_top" href=' + JSON.stringify(loginURL(canvasURL)) + '>' +
-        'Full Page Canvas Login' +
-      '</a><br><br>' +
-      '<div class="fb-login-button" scope="' + FBAPP.scope + '">' +
-        'JS SDK Dialog Login' +
-      '</div>' +
-      jssdk({ reloadOnLogin: true })
-    )
+    sendLogin(req, res, next)
   }
 })
 
