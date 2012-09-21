@@ -20,5 +20,6 @@ export FACEBOOK_NAMESPACE=fixme
 Live Demo
 ---------
 
-Canvas: https://apps.facebook.com/nodejssample/
-Website: https://nodejs-fb-sample-app.herokuapp.com/
+**Canvas**: https://apps.facebook.com/nodejssample/
+
+**Website**: https://nodejs-fb-sample-app.herokuapp.com/
