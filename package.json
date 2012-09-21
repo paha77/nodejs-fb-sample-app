@@ -1,0 +1,17 @@
+{
+  "name": "fb-sample-app",
+  "description": "A sample Facebook application on nodejs.",
+  "version": "1.0.0",
+  "homepage": "https://github.com/daaku/nodejs-fb-sample-app",
+  "author": "Naitik Shah <n@daaku.org>",
+  "bin": { "fb-sample-app": "./app.js" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/daaku/nodejs-fb-sample-app"
+  },
+  "dependencies": {
+    "express": "3.x",
+    "signed-request": "1.0.x"
+  },
+  "engines": { "node": "0.8.x" }
+}
