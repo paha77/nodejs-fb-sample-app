@@ -79,6 +79,17 @@ var app = express()
 app.use(express.bodyParser())
 app.use(express.cookieParser())
 
+// Notify the developer when the configuration is bad.
+app.all('*', function(req, res, next) {
+  if (!FBAPP.id || !FBAPP.secret || !FBAPP.ns) {
+    return res.send(
+      500,
+      'Facebook application has not been configured. Follow the readme.'
+    )
+  }
+  next()
+})
+
 // Parses the signed_request sent on Canvas requests or from the cookie.
 // https://developers.facebook.com/docs/authentication/signed_request/
 app.all('*', function(req, res, next) {
