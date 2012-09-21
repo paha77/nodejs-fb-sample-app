@@ -125,7 +125,7 @@ app.all('/', function(req, res) {
       200,
       '<!doctype html>' +
       'Welcome unknown user. Click one of these to continue:<br><br>' +
-      '<a href=' + JSON.stringify(loginURL(canvasURL)) + '>' +
+      '<a target="_top" href=' + JSON.stringify(loginURL(canvasURL)) + '>' +
         'Full Page Canvas Login' +
       '</a><br><br>' +
       '<div class="fb-login-button" scope="' + FBAPP.scope + '">' +
