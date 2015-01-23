@@ -12,7 +12,6 @@ var request = require('request')
 var signedRequestMaxAge = 86400
 var https = require('https')
 var http = require('http')
-
 var FBAPP = {
   id: process.env.FACEBOOK_APP_ID,
   secret: process.env.FACEBOOK_SECRET,
@@ -190,7 +189,7 @@ var ssl_port = process.env.SSLPORT || 3001
 var privateKeyFile = process.env.PRIVATEKEY || 'ssl/server.key'
 var certificateKeyFile = process.env.CERTIFICATE || 'ssl/server.crt'
 var privateKey = fs.readFileSync(privateKeyFile)
-var certificate = fs.readFileSync(certificateKeyFile);
+var certificate = fs.readFileSync(certificateKeyFile)
 
 var ssl_options = {
     key: privateKey,
