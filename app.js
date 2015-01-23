@@ -10,6 +10,9 @@ var signedRequest = require('signed-request')
 var express = require('express')
 var request = require('request')
 var signedRequestMaxAge = 86400
+var https = require('https')
+var http = require('http')
+
 var FBAPP = {
   id: process.env.FACEBOOK_APP_ID,
   secret: process.env.FACEBOOK_SECRET,
@@ -183,6 +186,17 @@ app.all('/', function(req, res, next) {
 
 // Start your engines.
 var port = process.env.PORT || 3000
-app.listen(port, function() {
-  console.log('Listening on ' + port)
-})
+var ssl_port = process.env.SSLPORT || 3001
+var privateKeyFile = process.env.PRIVATEKEY || 'ssl/server.key'
+var certificateKeyFile = process.env.CERTIFICATE || 'ssl/server.crt'
+var privateKey = fs.readFileSync(privateKeyFile)
+var certificate = fs.readFileSync(certificateKeyFile);
+
+var ssl_options = {
+    key: privateKey,
+    cert: certificate
+};
+
+http.createServer(app).listen(port);
+https.createServer(ssl_options, app).listen(ssl_port);
+
